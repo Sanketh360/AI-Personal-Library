@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: library_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./books:/app/books
+      - ./uploads:/app/uploads
+      - ./chroma_db:/app/chroma_db
+      - ./database:/app/database
+      - ./hf_cache:/app/hf_cache
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
+      - SQLITE_DB_URL=sqlite:///./database/library.db
+      - CHROMA_DB_PATH=/app/chroma_db
+      - BOOKS_DIR=/app/books
+      - UPLOADS_DIR=/app/uploads
+      - EMBEDDING_MODEL_NAME=nomic-ai/nomic-embed-text-v1.5
+      - RERANKER_MODEL_NAME=cross-encoder/ms-marco-MiniLM-L-6-v2
+      - DISABLE_RERANKER=${DISABLE_RERANKER:-false}
+      - RERANKER_CANDIDATE_LIMIT=${RERANKER_CANDIDATE_LIMIT:-8}
+      - HF_HOME=/app/hf_cache
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: library_frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped

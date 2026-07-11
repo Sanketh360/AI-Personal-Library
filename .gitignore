@@ -1,0 +1,28 @@
+# Credentials
+.env
+
+# Local database storage
+database/
+chroma_db/
+
+# Downloaded AI Models Cache
+hf_cache/
+
+# Local Libraries
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+
+# Local User Data
+books/*
+!books/.gitkeep
+uploads/*
+!uploads/.gitkeep
+
+# Build artifacts
+dist/
+model_data.pdf
+walkthrough.md
+implementation_plan.md
+task.md

@@ -15,8 +15,6 @@ __pycache__/
 *.pyc
 
 # Local User Data
-books/*
-!books/.gitkeep
 uploads/*
 !uploads/.gitkeep
 

@@ -16,7 +16,81 @@ An agentic reasoning loop (built on the Google ADK Framework using `gemini-3.1-f
 ## 2. System Architecture
 
 The platform follows a clean, modular microservices topology orchestrated using **Docker Compose**:
-![System Architecture Diagram](file:///e:/AI%20Personal%20Library/architecture_diagram.png)
+```mermaid
+graph TB
+    subgraph Frontend ["Frontend Container (React + Vite)"]
+        UI["React SPA Dashboard (App.jsx)"]
+        Proxy["Vite Dev Server (Port 5173 / Proxy)"]
+        UI -->|API Requests| Proxy
+    end
+
+    subgraph Backend ["Backend Container (FastAPI + Uvicorn)"]
+        Main["FastAPI App (main.py)"]
+        
+        subgraph APIRouters ["API Routers (api/)"]
+            U_Router["Upload Router (upload.py)"]
+            B_Router["Books Router (books.py)"]
+            C_Router["Chat Router (chat.py)"]
+            S_Router["Status Router (status.py)"]
+        end
+        
+        subgraph CoreServices ["Core Services (services/)"]
+            Watcher["Folder Watcher (watcher.py)"]
+            Scanner["Startup Scanner (watcher.py)"]
+            Pipeline["Indexing Pipeline (indexing.py)"]
+            Parser["Doc Parser (parser.py)"]
+            Structure["Section Boundary Detector (structure_detector.py)"]
+            Chunker["Token Chunker (chunker.py)"]
+            Embedder["Nomic Embedder (embedding.py)"]
+            Reranker["CrossEncoder Reranker (reranker.py)"]
+            Retrieval["Hybrid RRF Retrieval (retrieval.py)"]
+        end
+        
+        subgraph AgentEnv ["Agent Reasoning (agent/)"]
+            Orchestrator["ADK Agent Orchestrator"]
+            Tools["Custom RAG Tools (tools.py)"]
+        end
+    end
+
+    subgraph Storage ["Physical Storage (Host Volume Mounts)"]
+        V_Books["books/ (Raw PDFs)"]
+        V_Uploads["uploads/ (Temp files)"]
+        V_DB["database/library.db (SQLite)"]
+        V_Chroma["chroma_db/ (Vector Store)"]
+        V_Cache["hf_cache/ (Hugging Face Models)"]
+    end
+
+    subgraph Cloud ["External Cloud API"]
+        Gemini["Gemini API (gemini-3.1-flash-lite)"]
+    end
+
+    %% Flows and Connections
+    Proxy -->|Forward /api| Main
+    Main --> APIRouters
+    
+    %% Ingestion Flow
+    Watcher -->|New File Event| Pipeline
+    Scanner -->|Startup Sync| Pipeline
+    U_Router -->|Manual Upload| Pipeline
+    Pipeline --> Parser --> Structure --> Chunker --> Embedder
+    
+    %% Storage Writes
+    U_Router -->|Save temp| V_Uploads
+    Pipeline -->|Save permanent| V_Books
+    Pipeline -->|Insert metadata| V_DB
+    Pipeline -->|Insert vectors| V_Chroma
+    Embedder -->|Read weights| V_Cache
+    Reranker -->|Read weights| V_Cache
+
+    %% Query / Chat Flow
+    C_Router --> Orchestrator
+    Orchestrator -->|Reasoning Call| Gemini
+    Orchestrator -->|Execute Search| Tools
+    Tools -->|SQLite FTS5| V_DB
+    Tools -->|Chroma Queries| V_Chroma
+    Tools -->|Score Results| Retrieval
+    Retrieval --> Reranker
+```
 
 ### Core Architecture Components:
 1. **Frontend App (library_frontend):** Runs inside a Node.js container, serving the React SPA dashboard via Vite. Configures a reverse-proxy mapping for `/api` queries to avoid CORS issues.
